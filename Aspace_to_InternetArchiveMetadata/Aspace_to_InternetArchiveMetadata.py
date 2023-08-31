@@ -12,11 +12,10 @@ import os
 
 
 #to do:
-    #add rights statement
     #add part_of
     #add manual pre-sets (collection, sponsor)
     #add function for mediatype (base it on the file extension; examples: .mp4 = movies, .pdf = text)
-    #need to strip the archival_object row from updated CSV because it'll mess up the upload to IA
+    #need to strip the archival_object row from updated CSV because it'll mess up the upload to IA. Or we could prefer PUI links and push those as part of IA metadata. 
     #need to do something to include grandchild indicator, ect for Instance record (Example = Folder 1, Item 1)
     #cleanup part_of citation. need to regex out repeating values (ex MSxxxx Series 1 Series 1)
 
