@@ -15,7 +15,7 @@ Also maps the file extension of a digital object to the required 'mediatype' IA 
 ## CSV 
 + identifier = file name without the file extension (Examples = ms2373_s2_c107D_f7_i1 ; mvc0044_s1_c7_film15) 
 + file = file name + extension. do not include file path (Examples = ms2373_s2_c107D_f7_i1.mp4 ; mvc0044_s1_c7_film15.mp4)
-+ source_uri = the URL of the archival_object record in the public user interface (Example = https://searcharchives.library.gwu.edu/repositories/2/archival_objects/342462)
++ archival_object = the URL of the archival_object in the staff interface of ArchivesSpace (Example = https://example.com/resources/441#tree::archival_object_197693)
 
 
 

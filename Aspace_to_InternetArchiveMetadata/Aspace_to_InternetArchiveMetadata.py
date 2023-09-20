@@ -19,7 +19,7 @@ import os
     #think through mapping of aspace notes (scope/content, extent)
 
 #set your CSV file path here:
-sheet = 'example.csv'
+sheet = 'C:/Users/dalton_alves/Desktop/example.csv'
 
 #pre-set values. don't touch these. they are used for all collection material uploaded to IA
 IA_sponsor = 'George Washington University Libraries'
@@ -39,18 +39,18 @@ input_data = read_csv_to_dict(sheet)
     
 for item in input_data:
     print('Starting: ' + item['file'])
-
-    parsed_url = urlparse(item['source_uri'])
+    
+    #extracting AO_ID from URL of archival object in staff interface
+    parsed_url = urlparse(item['archival_object'])
     domain = parsed_url.netloc
-    if "searcharchives" in domain:
-        match = re.search(r'/(\d+)$', parsed_url.path)
+    if "archivesspace" in domain:
+        match = re.search('.+archival_object_(\d+)$', item['archival_object'])
         if match:
             ao_id = match.group(1)
             print(ao_id)
-        else:
-            print("Please check your URL for " + item)
     else:
-        print("Please update CSV to link to ArchivesSpace PUI (you are currently linking to the staff interface or an invalid URL) for " + item)
+        print("Please update CSV to link to PUI (you are currently linking to the public interface or an invalid URL) for: " + item)
+        pass
 
     ao_record = requests.get(HOST + '/repositories/2/archival_objects/' + ao_id, headers=headers)
     if ao_record.status_code == 404:
@@ -159,6 +159,11 @@ for item in input_data:
     item.update({'subject[3]': ''})
     #setting description. Can update this later to relate to map to archival description, but need to think through logic. Possibly maping to AO notes for scope and content at series and or file/item level.
     item.update({'description': ''})
+
+    #constructing source_URI to PUI from the AO_ID
+    source_uri = config.PUI + 'archival_objects/' + ao_id
+    item.update({'source_uri':source_uri})
+    print(source_uri)
 
 df = pd.DataFrame(input_data)
 df.to_csv('update.csv', index=False)
