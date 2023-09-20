@@ -162,9 +162,8 @@ for item in input_data:
 
     #constructing source_URI to PUI from the AO_ID
     source_uri = config.PUI + 'archival_objects/' + ao_id
-    item.update({'source_uri':source_uri})
-    print(source_uri)
-
+    item.update({'source_uri'})
+    
 df = pd.DataFrame(input_data)
 df.to_csv('update.csv', index=False)
 
