@@ -3,6 +3,7 @@ import requests
 import pandas as pd
 import csv
 import json
+from urllib.parse import urlparse
 import user.config as config
 from user.auth import UserAuthenticator
 from tools.mediaType import MediaTypeResolver
@@ -10,17 +11,15 @@ from tools.AO_utils import get_ancestor_ref, get_location_info
 from tools.csvtool import check_nested_key_value, read_csv_to_dict
 import os
 
-
 #to do:
-    #add part_of
-    #add manual pre-sets (collection, sponsor)
-    #add function for mediatype (base it on the file extension; examples: .mp4 = movies, .pdf = text)
+    #regex for part_of
+    #think through csv required fields. How does "identifier" and "file" relate to context of workflows? file is just file or URI? Look a old upload sheets.
     #need to strip the archival_object row from updated CSV because it'll mess up the upload to IA. Or we could prefer PUI links and push those as part of IA metadata. 
-    #need to do something to include grandchild indicator, ect for Instance record (Example = Folder 1, Item 1)
-    #cleanup part_of citation. need to regex out repeating values (ex MSxxxx Series 1 Series 1)
+    #cleanup part_of citation. need to regex out repeating values (ex (MSxxxx) MSxxxx Series 1 Series 1)
+    #think through mapping of aspace notes (scope/content, extent)
 
 #set your CSV file path here:
-sheet = 'C:/Users/dalton_alves/Desktop/test.csv'
+sheet = 'example.csv'
 
 #pre-set values. don't touch these. they are used for all collection material uploaded to IA
 IA_sponsor = 'George Washington University Libraries'
@@ -41,12 +40,18 @@ input_data = read_csv_to_dict(sheet)
 for item in input_data:
     print('Starting: ' + item['file'])
 
-    if re.search('.+archival_object_(\d+)$', item['archival_object']):
-        ao_id = re.search('.+archival_object_(\d+)$',item['archival_object']).group(1)
+    parsed_url = urlparse(item['source_uri'])
+    domain = parsed_url.netloc
+    if "searcharchives" in domain:
+        match = re.search(r'/(\d+)$', parsed_url.path)
+        if match:
+            ao_id = match.group(1)
+            print(ao_id)
+        else:
+            print("Please check your URL for " + item)
     else:
-        print('It looks like we found an archival object whose link isn\'t well formatted: ' + item['archival_object'])
-        pass
-        
+        print("Please update CSV to link to ArchivesSpace PUI (you are currently linking to the staff interface or an invalid URL) for " + item)
+
     ao_record = requests.get(HOST + '/repositories/2/archival_objects/' + ao_id, headers=headers)
     if ao_record.status_code == 404:
         raise Exception('This archival object couldn\'t be retrieved with the api. Something may be wrong with the URL?: ' + ['archival_object'])
@@ -100,7 +105,9 @@ for item in input_data:
     ##ao instance and location info
     location_info = get_location_info(ao_record, headers, config.HOST)
 
-    part_of = " ".join(filter(None, [collectionID, seriesID, subseriesID, location_info])) #need to use regex here to clean up; fix bad data entry like "MSXXXX Series 1 Series"
+    full_location = " ".join(filter(None, [seriesID, subseriesID, location_info]))
+    part_of = collectionTitle + " (" + collectionID + ") " + full_location #need to use regex here to clean up; fix bad data entry like "MSXXXX Series 1 Series"
+    # Remove repetitions of words using regular expressions
     item.update({'part_of':part_of})
 
 
@@ -145,6 +152,13 @@ for item in input_data:
     #setting pre-set values
     item.update({'sponsor': IA_sponsor})
     item.update({'collection': IA_collection})
+    
+    #setting IA subject values. These will require user input in the updated CSV. Archival description uses LC and other controlled vocabularies but they are often applied to the resource record. Does not map well to the vocabulary we use for IA objects.
+    item.update({'subject[1]': collectionID}) #we consistently use the collectionID of material as a subject heading in IA
+    item.update({'subject[2]': ''})
+    item.update({'subject[3]': ''})
+    #setting description. Can update this later to relate to map to archival description, but need to think through logic. Possibly maping to AO notes for scope and content at series and or file/item level.
+    item.update({'description': ''})
 
 df = pd.DataFrame(input_data)
 df.to_csv('update.csv', index=False)
