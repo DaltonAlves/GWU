@@ -58,5 +58,31 @@ def get_location_info(ao_record, headers, host):
         ]
 
     joined_values = ' '.join(value for value in ordered_values if value is not None)
-    
     return joined_values
+
+
+def get_notes(ao_record):
+  """Extracts the type and content values of the note_singlepart JSON objects and the type and content values from the subnote objects of the note_multipart objects.
+
+  Args:
+    notes: A list of JSON objects representing the notes.
+
+  Returns:
+    A list of dictionaries, each of which contains the type and content values of a note or subnote.
+  """
+  notes = ao_record['notes']
+  note_info = []
+  for note in notes:
+    if note["jsonmodel_type"] == "note_singlepart":
+      note_info.append({
+          "type": note["type"],
+          "content": note["content"]
+      })
+    elif note["jsonmodel_type"] == "note_multipart":
+      for subnote in note["subnotes"]:
+        note_info.append({
+            "type": subnote["jsonmodel_type"],
+            "content": subnote["content"]
+        })
+
+  return note_info

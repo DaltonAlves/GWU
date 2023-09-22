@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 import user.config as config
 from user.auth import UserAuthenticator
 from tools.mediaType import MediaTypeResolver
-from tools.AO_utils import get_ancestor_ref, get_location_info
+from tools.AO_utils import get_ancestor_ref, get_location_info, get_notes
 from tools.csvtool import check_nested_key_value, read_csv_to_dict
 import os
 
@@ -19,7 +19,7 @@ import os
     #think through mapping of aspace notes (scope/content, extent)
 
 #set your CSV file path here:
-sheet = 'C:/Users/dalton_alves/Desktop/example.csv'
+sheet = 'C:/Users/dalton_alves/Desktop/example2.csv'
 
 #pre-set values. don't touch these. they are used for all collection material uploaded to IA
 IA_sponsor = 'George Washington University Libraries'
@@ -39,17 +39,24 @@ input_data = read_csv_to_dict(sheet)
     
 for item in input_data:
     print('Starting: ' + item['file'])
-    
-    #extracting AO_ID from URL of archival object in staff interface
+    #extracting AO_ID from URL of archival object in staff interface or public user interface
     parsed_url = urlparse(item['archival_object'])
     domain = parsed_url.netloc
     if "archivesspace" in domain:
         match = re.search('.+archival_object_(\d+)$', item['archival_object'])
         if match:
             ao_id = match.group(1)
-            print(ao_id)
+            #constructing source_URI to PUI from the AO_ID
+            source_uri = config.PUI + 'archival_objects/' + ao_id
+            item.update({'source_uri': source_uri})
+    elif "searcharchives" in domain:
+        match =  re.search(r'/(\d+)$', item['archival_object'])
+        if match:
+            ao_id = match.group(1)
+        source_uri = item['archival_object']
+        item.update({'source_uri': source_uri})
     else:
-        print("Please update CSV to link to PUI (you are currently linking to the public interface or an invalid URL) for: " + item)
+        print("Error! Please check your archival_object URL in the CSV sheet for: " + item)
         pass
 
     ao_record = requests.get(HOST + '/repositories/2/archival_objects/' + ao_id, headers=headers)
@@ -89,7 +96,7 @@ for item in input_data:
         subseriesID = ''
 
     if series_ref is not None:
-        ao_series =  requests.get(HOST + series_ref, headers=headers)
+        ao_series = requests.get(HOST + series_ref, headers=headers)
         ao_series = ao_series.json()
         seriesTitle = ao_series['title']
         seriesID = ao_series['component_id']
@@ -149,6 +156,19 @@ for item in input_data:
     if media_type:
         item.update({'mediatype': media_type})
 
+    note_list = get_notes(ao_record)
+    descriptioncount = 1 #count will be used to create description[1], description[2], ect per IA upload instructions for multiple descriptions. 
+    for note in note_list:
+        description = note.get('content')
+        if type(description) == str:
+            item.update({'description' + '[' + str(descriptioncount) + ']':description}) 
+            descriptioncount += 1
+        if type(description) == list:
+            for x in description: #probably a better variable than x here. 
+                item.update({'description' + '[' + str(descriptioncount) + ']':x}) 
+                descriptioncount += 1
+
+
     #setting pre-set values
     item.update({'sponsor': IA_sponsor})
     item.update({'collection': IA_collection})
@@ -157,13 +177,7 @@ for item in input_data:
     item.update({'subject[1]': collectionID}) #we consistently use the collectionID of material as a subject heading in IA
     item.update({'subject[2]': ''})
     item.update({'subject[3]': ''})
-    #setting description. Can update this later to relate to map to archival description, but need to think through logic. Possibly maping to AO notes for scope and content at series and or file/item level.
-    item.update({'description': ''})
 
-    #constructing source_URI to PUI from the AO_ID
-    source_uri = config.PUI + 'archival_objects/' + ao_id
-    item.update({'source_uri'})
-    
 df = pd.DataFrame(input_data)
 df.to_csv('update.csv', index=False)
 
