@@ -7,7 +7,7 @@ Also maps the file extension of a digital object to the required 'mediatype' IA 
 
 + Clone this repository to your local machine.
 + Update user/config.py with your Aspace login and Aspace API URL.
-+ Copy the example CSV and match digital file URIs, file names, and the URL of their representative archival object record in Aspace. Make sure that the URL is from the staff interface, not the PUI.
++ Copy the example CSV and match digital file URIs, file names, and the URL of their representative archival object record in Aspace. The Archival_object
 + Update the "sheet" variable in Aspace_to_InternetArchiveMetadata.py to point to your updated CSV.
 + Run TitleAspace_to_InternetArchiveMetadata.py.
 + Your ouput will save as update.csv in the same directory as Aspace_to_InternetArchiveMetadata.py. 
@@ -15,7 +15,7 @@ Also maps the file extension of a digital object to the required 'mediatype' IA 
 ## CSV 
 + identifier = file name without the file extension (Examples = ms2373_s2_c107D_f7_i1 ; mvc0044_s1_c7_film15) 
 + file = file name + extension. do not include file path (Examples = ms2373_s2_c107D_f7_i1.mp4 ; mvc0044_s1_c7_film15.mp4)
-+ archival_object = the URL of the archival_object in the staff interface of ArchivesSpace (Example = https://example.com/resources/441#tree::archival_object_197693)
++ archival_object = the URL of the archival_object (from the PUI or staff interface) or the Archival Object ID # (Examples = https://example.com/resources/441#tree::archival_object_197693, 197693)
 
 
 
