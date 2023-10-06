@@ -1,7 +1,7 @@
 # ArchivesSpace Digital Object Record Creator Tool
 Updated version of the classic GW SCRC Aspace Digital Object Record Creator.
 
-This version allows for users to choice between a user-generated titled for a DO record or to simply inherent a title from the attached archival object record. 
+This version allows for users to choose between a user-generated titled for a DO record or to simply inherent a title from the attached archival object record. 
     
 ## CSV setup
 + new title (optional) = If this field is left blank, the title of the digital object will be inherited from the linked archival object. You can use this field if you'd like the title to be different from the archival object. 
