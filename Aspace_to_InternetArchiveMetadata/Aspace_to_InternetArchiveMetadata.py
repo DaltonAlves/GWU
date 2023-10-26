@@ -58,8 +58,8 @@ for item in input_data:
         match =  re.search(r'/(\d+)$', item['archival_object_source'])
         if match:
             ao_id = match.group(1)
-        source_uri = item['archival_object_source']
-        item.update({'archival_object_source': source_uri})
+        archival_object_source = item['archival_object_source']
+        item.update({'archival_object_source': archival_object_source})
     else:
         print("Error! Please check your archival_object URL in the CSV sheet for: " + item['file'])
         pass
