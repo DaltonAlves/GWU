@@ -1,7 +1,7 @@
-identifier,file,source_uri,,,,,
-test1,test1.jpg,https://searcharchives.library.gwu.edu/repositories/2/archival_objects/582497,,,,,
-test2,test2.tiff,https://searcharchives.library.gwu.edu/repositories/2/archival_objects/559651,,,,,
-test3,test3.pdf,https://searcharchives.library.gwu.edu/repositories/2/archival_objects/115585,,,,,
-test4,test4.mp3,https://searcharchives.library.gwu.edu/repositories/2/archival_objects/157254,,,,,
-test5,test5.mov,https://searcharchives.library.gwu.edu/repositories/2/archival_objects/170144,,,,,
-test6,test6.pdf,https://searcharchives.library.gwu.edu/repositories/2/archival_objects/226034,,,,,
+identifier,file,archival_object_source
+test1,test1.jpg,https://searcharchives.library.gwu.edu/repositories/2/archival_objects/582497
+test2,test2.tiff,https://searcharchives.library.gwu.edu/repositories/2/archival_objects/559651
+test3,test3.pdf,https://searcharchives.library.gwu.edu/repositories/2/archival_objects/115585
+test4,test4.mp3,https://searcharchives.library.gwu.edu/repositories/2/archival_objects/157254
+test5,test5.mov,https://searcharchives.library.gwu.edu/repositories/2/archival_objects/170144
+test6,test6.pdf,https://searcharchives.library.gwu.edu/repositories/2/archival_objects/226034

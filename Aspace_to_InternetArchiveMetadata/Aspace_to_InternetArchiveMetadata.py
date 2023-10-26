@@ -17,9 +17,10 @@ import os
     #need to strip the archival_object row from updated CSV because it'll mess up the upload to IA. Or we could prefer PUI links and push those as part of IA metadata. 
     #cleanup part_of citation. need to regex out repeating values (ex (MSxxxx) MSxxxx Series 1 Series 1)
     #think through mapping of aspace notes (scope/content, extent)
+    #is there any value of having mediatype map to a specific pre-defined profile for different material types?
 
 #set your CSV file path here:
-sheet = 'C:/Users/dalton_alves/Desktop/example2.csv'
+sheet = 'C:/Users/Dalton_alves/Desktop/example.csv'
 
 #pre-set values. don't touch these. they are used for all collection material uploaded to IA
 IA_sponsor = 'George Washington University Libraries'
@@ -38,38 +39,45 @@ if __name__ == "__main__":
 input_data = read_csv_to_dict(sheet)
     
 for item in input_data:
+    if item['archival_object_source'] == '':
+        print('empty row')
+        break
     print('Starting: ' + item['file'])
+
     #extracting AO_ID from URL of archival object in staff interface or public user interface
-    parsed_url = urlparse(item['archival_object'])
+    parsed_url = urlparse(item['archival_object_source'])
     domain = parsed_url.netloc
     if "archivesspace" in domain:
-        match = re.search('.+archival_object_(\d+)$', item['archival_object'])
+        match = re.search('.+archival_object_(\d+)$', item['archival_object_source'])
         if match:
             ao_id = match.group(1)
-            #constructing source_URI to PUI from the AO_ID
-            source_uri = config.PUI + 'archival_objects/' + ao_id
-            item.update({'source_uri': source_uri})
+            #constructing archival_object_source to PUI from the AO_ID
+            archival_object_source = config.PUI + 'archival_objects/' + ao_id
+            item.update({'archival_object_source': archival_object_source})
     elif "searcharchives" in domain:
-        match =  re.search(r'/(\d+)$', item['archival_object'])
+        match =  re.search(r'/(\d+)$', item['archival_object_source'])
         if match:
             ao_id = match.group(1)
-        source_uri = item['archival_object']
-        item.update({'source_uri': source_uri})
+        source_uri = item['archival_object_source']
+        item.update({'archival_object_source': source_uri})
     else:
-        print("Error! Please check your archival_object URL in the CSV sheet for: " + item)
+        print("Error! Please check your archival_object URL in the CSV sheet for: " + item['file'])
         pass
-
+    
+    #retrieving ao_record json
     ao_record = requests.get(HOST + '/repositories/2/archival_objects/' + ao_id, headers=headers)
     if ao_record.status_code == 404:
         raise Exception('This archival object couldn\'t be retrieved with the api. Something may be wrong with the URL?: ' + ['archival_object'])
     else:
         ao_record = ao_record.json()
 
+    #setting title
     ao_title = ao_record['title']
     item.update({'title': ao_title})
 
+    #setting dates
     ao_dates = ao_record['dates']
-    if ao_dates:  # Use this check to see if the list is not empty
+    if ao_dates:  # Use this to check to see if the list is not empty
         for dates in ao_dates:
             ao_dateExpression = dates['expression']
             ao_dateStart = dates.get('begin', '')  
@@ -83,7 +91,7 @@ for item in input_data:
     item.update({'date':ao_dateStart})
     item.update({'date_range':ao_dateExpression})
 
-    #get ref of ancestor records of AO
+    #get ref of ancestor records of AO and grabbing titles and component IDs.
     subseries_ref, series_ref, collection_ref = get_ancestor_ref(ao_record)
     
     if subseries_ref is not None:
@@ -113,8 +121,7 @@ for item in input_data:
     location_info = get_location_info(ao_record, headers, config.HOST)
 
     full_location = " ".join(filter(None, [seriesID, subseriesID, location_info]))
-    part_of = collectionTitle + " (" + collectionID + ") " + full_location #need to use regex here to clean up; fix bad data entry like "MSXXXX Series 1 Series"
-    # Remove repetitions of words using regular expressions
+    part_of = collectionTitle + " (" + collectionID + ") " + full_location #need to use regex here to clean up; fix bad data entry like "MSXXXX (MSXXXX) Series 1 Series..."
     item.update({'part_of':part_of})
 
 
@@ -150,12 +157,13 @@ for item in input_data:
         print(collectionTitle + " does not have a rights statement (key-value pair 'type': 'userestrict')")
 
 
-    #match file extension to controlled vocabular used by IA for mediatype (this is a required field)
+    #match file extension to controlled vocabulary used by IA for mediatype (this is a required field)
     media_type_resolver = MediaTypeResolver()
     media_type = media_type_resolver.get_media_type(item)
     if media_type:
         item.update({'mediatype': media_type})
 
+    #pulling AO notes from ao record and setting as IA "description" fields
     note_list = get_notes(ao_record)
     descriptioncount = 1 #count will be used to create description[1], description[2], ect per IA upload instructions for multiple descriptions. 
     for note in note_list:

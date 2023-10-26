@@ -64,9 +64,6 @@ def get_location_info(ao_record, headers, host):
 def get_notes(ao_record):
   """Extracts the type and content values of the note_singlepart JSON objects and the type and content values from the subnote objects of the note_multipart objects.
 
-  Args:
-    notes: A list of JSON objects representing the notes.
-
   Returns:
     A list of dictionaries, each of which contains the type and content values of a note or subnote.
   """
