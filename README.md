@@ -10,3 +10,6 @@ This version allows for users to choice between a user-inputted titled for a DO 
 Repurposes archival description from GWU's ArchivesSpace records to facilitate digital collection metadata creation. Maps metadata from Aspace 'archival object' records (AOs) and their ancestors (resource and other AO records) to required and additional custom fields in the Internet Archive's metadata schema.
 
 Also maps the file extension of a digital object to the required 'mediatype' IA field and its related controlled vocabulary.
+
+## [DigitalAccesioninga](DigitalAccesioning)
+Examples of simple python scripts, primarly using the OS and hashlib modules, that complete pre-ingest examinations and manipulations of born-digital records.
