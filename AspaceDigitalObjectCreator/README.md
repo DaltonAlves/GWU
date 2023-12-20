@@ -11,4 +11,8 @@ This version allows for users to choose between a user-generated titled for a DO
 + xlink_actuate_attribute = "onLoad" (don't change this)
 + xlink_show_attribute = "new" (don't change this)
 
+## To do:
++ Update to set publish status of DO record (not URI subrecord).
++ Add handling for multiple file URIs
+
 
