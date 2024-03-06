@@ -23,7 +23,7 @@ class MediaTypeResolver:
                     print('No media type match')
                     return ''  # Return a default value or handle the case when extension is not in the dictionary
             else:
-                print('regex failed')
+                print('regex failed or no file information present in CSV')
                 return None  # Return None if the regex match fails
         else:
             print('No "file" key in the dictionary')

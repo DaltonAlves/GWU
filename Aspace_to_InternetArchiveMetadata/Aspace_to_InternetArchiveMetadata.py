@@ -20,7 +20,7 @@ import os
     #is there any value of having mediatype map to a specific pre-defined profile for different material types?
 
 #set your CSV file path here:
-sheet = 'C:/Users/Dalton_alves/Desktop/example.csv'
+sheet = 'example.csv'
 
 #pre-set values. don't touch these. they are used for all collection material uploaded to IA
 IA_sponsor = 'George Washington University Libraries'
@@ -89,7 +89,7 @@ for item in input_data:
         ao_dateEnd = ''
         ao_dateEnd = ''
     item.update({'date':ao_dateStart})
-    item.update({'date_range':ao_dateExpression})
+    item.update({'date_expression':ao_dateExpression})
 
     #get ref of ancestor records of AO and grabbing titles and component IDs.
     subseries_ref, series_ref, collection_ref = get_ancestor_ref(ao_record)
@@ -142,7 +142,7 @@ for item in input_data:
         else:
             pass
     if not creator_found:
-        print(collectionTitle + " has no creator record!")
+        print(f"Collection record,{collectionTitle}, has no linked creator agent records!")
 
 
     #check for rights statement at collection level

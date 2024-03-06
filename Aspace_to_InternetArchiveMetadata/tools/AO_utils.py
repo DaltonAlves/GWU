@@ -33,20 +33,21 @@ def get_location_info(ao_record, headers, host):
         'top_containerLabel': '',
         'top_containerIndicator': ''
     }
-    ao_instance = ao_record['instances']
-    for instance in ao_instance:
-        if 'sub_container' in instance:
-            sub_container = instance['sub_container']
-            instance_location['type_2'] = sub_container.get('type_2', '')
-            instance_location['type_3'] = sub_container.get('type_3', '')
-            instance_location['indicator_2'] = sub_container.get('indicator_2', '')
-            instance_location['indicator_3'] = sub_container.get('indicator_3', '')
-            top_containerRef = sub_container['top_container'].get('ref')
-            top_container_response = requests.get(host + top_containerRef, headers=headers) #retrieve top container record
-            top_container = top_container_response.json()
-            instance_location['top_containerLabel'] = top_container.get('type')
-            instance_location['top_containerIndicator'] = top_container.get('indicator')
-
+    
+    ao_instance = ao_record.get('instances')  # Use get to handle None gracefully
+    if ao_instance is not None:
+        for instance in ao_instance:
+            if 'sub_container' in instance:
+                sub_container = instance['sub_container']
+                instance_location['type_2'] = sub_container.get('type_2', '')
+                instance_location['type_3'] = sub_container.get('type_3', '')
+                instance_location['indicator_2'] = sub_container.get('indicator_2', '')
+                instance_location['indicator_3'] = sub_container.get('indicator_3', '')
+                top_containerRef = sub_container['top_container'].get('ref')
+                top_container_response = requests.get(host + top_containerRef, headers=headers)
+                top_container = top_container_response.json()
+                instance_location['top_containerLabel'] = top_container.get('type')
+                instance_location['top_containerIndicator'] = top_container.get('indicator')
 
         ordered_values = [
             instance_location['top_containerLabel'],
@@ -56,8 +57,10 @@ def get_location_info(ao_record, headers, host):
             instance_location['type_3'],
             instance_location['indicator_3']
         ]
+        joined_values = ' '.join(value for value in ordered_values if value is not None)
+    else:
+        joined_values = ''  # Set to an appropriate default value when ao_instance is None
 
-    joined_values = ' '.join(value for value in ordered_values if value is not None)
     return joined_values
 
 
