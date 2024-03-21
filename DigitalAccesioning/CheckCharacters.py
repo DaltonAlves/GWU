@@ -1,60 +1,65 @@
-import os
 import re
 import json
+from pathlib import Path
 
-def get_unique_filename(root, new_filename):
-    base, ext = os.path.splitext(new_filename)
+def get_unique_name(path, new_name):
     counter = 1
-    while os.path.exists(os.path.join(root, new_filename)):
-        new_filename = f"{base}({counter}){ext}"
+    while (path / new_name).exists():
+        base, ext = new_name.stem, new_name.suffix
+        new_name = f"{base}({counter}){ext}"
         counter += 1
-    return new_filename
+    return new_name
 
 def remove_spaces(directory):
-    for root, dirs, files in os.walk(directory):
-        for filename in files:
-            full_path = os.path.join(root, filename)
-
-            if " " in filename:
-                new_filename = re.sub(r' ', '_', filename)
-                new_full_path = os.path.join(root, new_filename)
-
-                if full_path != new_full_path:
-                    print(f'Old filename: {filename}')
-                    print(f'New filename: {new_filename}')
-
-                    new_filename = get_unique_filename(root, new_filename)
-
-                    user_confirmation = input('Do you want to rename this file? (y/n): ').strip().lower()
-
-                    if user_confirmation == 'y':
-                        try:
-                            os.rename(full_path, os.path.join(root, new_filename))
-                            print(f'Renamed: {filename} to {new_filename}')
-                        except Exception as e:
-                            print(f'Error renaming {filename}: {e}')
-                    else:
-                        print(f'Skipped: {filename}')
+    for path in directory.rglob('*'):
+        if path.is_file() and " " in path.name:
+            new_name = path.with_name(path.name.replace(" ", "_"))
+            if path != new_name:
+                print(f'Old filename: {path.name}')
+                print(f'New filename: {new_name.name}')
+                new_name = directory / get_unique_name(directory, new_name)
+                user_confirmation = input('Do you want to rename this file? (y/n): ').strip().lower()
+                if user_confirmation == 'y':
+                    try:
+                        path.rename(new_name)
+                        print(f'Renamed: {path.name} to {new_name.name}')
+                    except Exception as e:
+                        print(f'Error renaming {path.name}: {e}')
+                else:
+                    print(f'Skipped: {path.name}')
+        elif path.is_dir() and " " in path.name:
+            new_name = path.with_name(path.name.replace(" ", "_"))
+            if path != new_name:
+                print(f'Old directory name: {path.name}')
+                print(f'New directory name: {new_name.name}')
+                new_name = directory / get_unique_name(directory, new_name)
+                user_confirmation = input('Do you want to rename this directory? (y/n): ').strip().lower()
+                if user_confirmation == 'y':
+                    try:
+                        path.rename(new_name)
+                        print(f'Renamed: {path.name} to {new_name.name}')
+                    except Exception as e:
+                        print(f'Error renaming {path.name}: {e}')
+                else:
+                    print(f'Skipped: {path.name}')
 
 def identify_bad_characters(directory_path):
     bad_characters = []
 
-    for foldername, subfolders, filenames in os.walk(directory_path):
-        for filename in filenames:
-            if any(ord(char) > 127 for char in filename):
-                file_path = os.path.join(foldername, filename)
-                bad_characters.append({"file_path": os.path.relpath(file_path, directory_path), "file_name": filename})
+    for path in directory_path.rglob('*'):
+        if any(ord(char) > 127 for char in path.name):
+            bad_characters.append({"file_path": str(path.relative_to(directory_path)), "file_name": path.name})
 
-    json_file_path = os.path.join(directory_path, "bad_characters.json")
+    json_file_path = directory_path / "bad_characters.json"
 
     try:
-        with open(json_file_path, "w", encoding="utf-8") as json_file:
+        with json_file_path.open("w", encoding="utf-8") as json_file:
             json.dump(bad_characters, json_file, ensure_ascii=False, indent=2)
         print(f"Bad characters saved to {json_file_path}")
     except Exception as e:
         print(f'Error saving bad characters to JSON: {e}')
 
 if __name__ == "__main__":
-    directory_path = r''
+    directory_path = Path(r'')  # Provide your directory path here
     remove_spaces(directory_path)
     identify_bad_characters(directory_path)

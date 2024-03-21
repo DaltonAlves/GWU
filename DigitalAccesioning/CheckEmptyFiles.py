@@ -10,6 +10,6 @@ def identify_zero_bit_files(directory):
                 print(f"Zero-bit file found: {file_path}")
 
 # Replace 'your_directory_path' with the path of the directory you want to search
-directory_path = 'your_directory_path'
+directory_path = r''
 
 identify_zero_bit_files(directory_path)

@@ -12,4 +12,4 @@ Repurposes archival description from GWU's ArchivesSpace records to facilitate d
 Also maps the file extension of a digital object to the required 'mediatype' IA field and its related controlled vocabulary.
 
 ## [DigitalAccesioning](DigitalAccesioning)
-Examples of simple python scripts, primarly using the OS and hashlib modules, that complete pre-ingest examinations and manipulations of born-digital records.
+Examples of simple python scripts, primarly using the OS, pathlib, and hashlib modules, that complete pre-ingest examinations and manipulations of born-digital records.

@@ -15,6 +15,6 @@ def identify_hidden_items(directory):
             print(f"Hidden file found: {hidden_file_path}")
 
 # Replace 'your_directory_path' with the path of the directory you want to search
-directory_path = r'C:\Users\dalton_alves'
+directory_path = r''
 
 identify_hidden_items(directory_path)
