@@ -1,27 +1,25 @@
 import re
 import requests
 import pandas as pd
-import csv
-import json
 from urllib.parse import urlparse
 import user.config as config
 from user.auth import UserAuthenticator
 from tools.mediaType import MediaTypeResolver
 from tools.AO_utils import get_ancestor_ref, get_location_info, get_notes
 from tools.csvtool import check_nested_key_value, read_csv_to_dict
-import os
 
-#to do:
-    #cleanup part_of citation. need to regex out repeating values (ex (MSxxxx) MSxxxx Series 1 Series 1)
-    #think through mapping of aspace notes (scope/content, extent)
-    #is there any value of having mediatype map to a specific pre-defined profile for different material types?
-
-#set your CSV file path here:
+# Set your CSV file path here:
 sheet = 'example.csv'
 
-#pre-set values. don't touch these. they are used for all collection material uploaded to IA
+# Pre-set values used for all collection material uploaded to IA. Don't touch these. 
 IA_sponsor = 'George Washington University Libraries'
 IA_collection = "gwulibraries"
+
+def clean_part_of(part_of):
+    # Remove repeating values (e.g., "MSXXXX (MSXXXX) Series 1 Series 1")
+    # The regex pattern captures a word or identifier and looks ahead for the same word with optional text in between. Still doesn't handle (MSXXXX) MSXXXX
+    cleaned = re.sub(r'\b(\w+)\b(?: \(\1\))?(?: \1)+', r'\1', part_of)
+    return cleaned
 
 if __name__ == "__main__":
     authenticator = UserAuthenticator()
@@ -30,168 +28,144 @@ if __name__ == "__main__":
         print("Authentication successful. Session headers:", authenticator.headers)
     else:
         print("Authentication failed.")
+    
     headers = authenticator.headers
     HOST = config.HOST
 
-input_data = read_csv_to_dict(sheet)
+    input_data = read_csv_to_dict(sheet)
     
-for item in input_data:
-    if item['archival_object_source'] == '':
-        print('empty row')
-        break
-    print('Starting: ' + item['file'])
+    for item in input_data:
+        if item['archival_object_source'] == '':
+            print('empty row')
+            continue  # Continue to the next item instead of breaking the loop
 
-    #extracting AO_ID from URL of archival object in staff interface or public user interface
-    parsed_url = urlparse(item['archival_object_source'])
-    domain = parsed_url.netloc
-    if "archivesspace" in domain:
-        match = re.search('.+archival_object_(\d+)$', item['archival_object_source'])
-        if match:
-            ao_id = match.group(1)
-            #constructing archival_object_source to PUI from the AO_ID
-            archival_object_source = config.PUI + 'archival_objects/' + ao_id
+        print('Starting: ' + item['file'])
+
+        # Extracting AO_ID from URL
+        parsed_url = urlparse(item['archival_object_source'])
+        domain = parsed_url.netloc
+        ao_id = None
+        
+        if "archivesspace" in domain:
+            match = re.search('.+archival_object_(\d+)$', item['archival_object_source'])
+            if match:
+                ao_id = match.group(1)
+                archival_object_source = config.PUI + 'archival_objects/' + ao_id
+                item.update({'archival_object_source': archival_object_source})
+        elif "searcharchives" in domain:
+            match =  re.search(r'/(\d+)$', item['archival_object_source'])
+            if match:
+                ao_id = match.group(1)
+            archival_object_source = item['archival_object_source']
             item.update({'archival_object_source': archival_object_source})
-    elif "searcharchives" in domain:
-        match =  re.search(r'/(\d+)$', item['archival_object_source'])
-        if match:
-            ao_id = match.group(1)
-        archival_object_source = item['archival_object_source']
-        item.update({'archival_object_source': archival_object_source})
-    else:
-        print("Error! Please check your archival_object URL in the CSV sheet for: " + item['file'])
-        pass
-    
-    #retrieving ao_record json
-    ao_record = requests.get(HOST + '/repositories/2/archival_objects/' + ao_id, headers=headers)
-    if ao_record.status_code == 404:
-        raise Exception('This archival object couldn\'t be retrieved with the api. Something may be wrong with the URL?: ' + ['archival_object'])
-    else:
-
-        ao_record = ao_record.json()
-
-
-    #setting ref_id as identifier-bib
-    ref_id = ao_record.get('ref_id', 'N/A')
-    print(ref_id)
-    ref_id_with_label = f"{ref_id} (ref_id)"  # Concatenate '(ref_id)' to the ref_id value. Identifier-bib is not controlled, we want to clarify what this string means.
-    item.update({'identifier-bib': ref_id_with_label})
-
-    #setting title
-    ao_title = ao_record['title']
-    item.update({'title': ao_title})
-
-    #setting dates
-    ao_dates = ao_record['dates']
-    if ao_dates:  # Use this to check to see if the list is not empty
-        for dates in ao_dates:
-            ao_dateExpression = dates['expression']
-            ao_dateStart = dates.get('begin', '')  
-            ao_dateEnd = dates.get('end', '')   
-            break
-    else:
-        ao_dateExpression = ''
-        ao_dateStart = ''
-        ao_dateEnd = ''
-        ao_dateEnd = ''
-    item.update({'date':ao_dateStart})
-    item.update({'date_expression':ao_dateExpression})
-
-    #get ref of ancestor records of AO and grabbing titles and component IDs.
-    subseries_ref, series_ref, collection_ref = get_ancestor_ref(ao_record)
-    
-    if subseries_ref is not None:
-        ao_subseries = requests.get(HOST + subseries_ref, headers=headers)
-        ao_subseries = ao_subseries.json()
-        subseriesTitle = ao_subseries['title']
-        subseriesID = ao_subseries['component_id']
-    if subseries_ref is None: #this could be else statement I think?
-        subseriesTitle = ''
-        subseriesID = ''
-
-    if series_ref is not None:
-        ao_series = requests.get(HOST + series_ref, headers=headers)
-        ao_series = ao_series.json()
-        seriesTitle = ao_series['title']
-        seriesID = ao_series['component_id']
-    if series_ref is None: #this could be else statement I think?
-        seriesTitle = ''
-        seriesID = ''
-    #don't need IF statements here because I think every AO should be connected to a collection record
-    ao_collection =  requests.get(HOST + collection_ref, headers=headers)
-    ao_collection = ao_collection.json()
-    collectionTitle = ao_collection['title']
-    collectionID = ao_collection['id_0']
-
-    ##ao instance and location info
-    location_info = get_location_info(ao_record, headers, config.HOST)
-
-    full_location = " ".join(filter(None, [seriesID, subseriesID, location_info]))
-    part_of = collectionTitle + " (" + collectionID + ") " + full_location #need to use regex here to clean up; fix bad data entry like "MSXXXX (MSXXXX) Series 1 Series..."
-    item.update({'part_of':part_of})
-
-
-    #finding agents at colleciton level to use as creator
-    creator_found = False #setting for print message
-    collectionAgents = ao_collection['linked_agents']
-    for agent in collectionAgents:
-        role = agent['role']
-        ref = agent['ref']
-
-        if role == 'creator' or role == 'source':
-            creator_ref = ref
-            creator_found = True #updating flag for print message
-            creator_record = requests.get(HOST + creator_ref, headers=headers)
-            creator_record = creator_record.json()
-            creator_name =  creator_record['title']
-            item.update({'creator':creator_name})
         else:
-            pass
-    if not creator_found:
-        print(f"Collection record,{collectionTitle}, has no linked creator agent records!")
+            print("Error! Please check your archival_object URL in the CSV sheet for: " + item['file'])
+            continue
 
+        if not ao_id:
+            print(f"Could not extract AO_ID for: {item['file']}")
+            continue
 
-    #check for rights statement at collection level
-    if check_nested_key_value(ao_collection, "type", "userestrict"):
-        rights = []
-        for note in ao_collection["notes"]:
-            if note.get("type") == "userestrict":
-                for subnote in note.get("subnotes"):
-                    rights = subnote['content']
-        item.update({'rights':rights})
-    else:
-        print(collectionTitle + " does not have a rights statement (key-value pair 'type': 'userestrict')")
+        # Retrieving AO record JSON
+        ao_record_response = requests.get(f"{HOST}/repositories/2/archival_objects/{ao_id}", headers=headers)
+        if ao_record_response.status_code == 404:
+            print(f"Archival object couldn't be retrieved: {item['archival_object_source']}")
+            continue
+        ao_record = ao_record_response.json()
 
+        # Setting ref_id as identifier-bib
+        ref_id = ao_record.get('ref_id', 'N/A')
+        item.update({'identifier-bib': f"{ref_id} (ref_id)"})
 
-    #match file extension to controlled vocabulary used by IA for mediatype (this is a required field)
-    media_type_resolver = MediaTypeResolver()
-    media_type = media_type_resolver.get_media_type(item)
-    if media_type:
-        item.update({'mediatype': media_type})
+        # Setting title
+        item.update({'title': ao_record.get('title', '')})
 
-    #pulling AO notes from ao record and setting as IA "description" fields
-    note_list = get_notes(ao_record)
-    descriptioncount = 1 #count will be used to create description[1], description[2], ect per IA upload instructions for multiple descriptions. 
-    for note in note_list:
-        description = note.get('content')
-        if type(description) == str:
-            item.update({'description' + '[' + str(descriptioncount) + ']':description}) 
-            descriptioncount += 1
-        if type(description) == list:
-            for x in description: #probably a better variable than x here. 
-                item.update({'description' + '[' + str(descriptioncount) + ']':x}) 
-                descriptioncount += 1
+        # Setting dates
+        ao_dates = ao_record.get('dates', [])
+        ao_dateExpression = ao_dateStart = ao_dateEnd = ''
+        if ao_dates:
+            first_date = ao_dates[0]
+            ao_dateExpression = first_date.get('expression', '')
+            ao_dateStart = first_date.get('begin', '')
+            ao_dateEnd = first_date.get('end', '')
+        item.update({'date': ao_dateStart, 'date_expression': ao_dateExpression})
 
+        # Getting ancestor refs
+        subseries_ref, series_ref, collection_ref = get_ancestor_ref(ao_record)
+        
+        subseriesTitle = subseriesID = ''
+        if subseries_ref:
+            ao_subseries = requests.get(HOST + subseries_ref, headers=headers).json()
+            subseriesTitle = ao_subseries.get('title', '')
+            subseriesID = ao_subseries.get('component_id', '')
 
-    #setting pre-set values
-    item.update({'sponsor': IA_sponsor})
-    item.update({'collection': IA_collection})
-    
-    #setting IA subject values. These will require user input in the updated CSV. Archival description uses LC and other controlled vocabularies but they are often applied to the resource record. Does not map well to the vocabulary we use for IA objects.
-    item.update({'subject[1]': collectionID}) #we consistently use the collectionID of material as a subject heading in IA
-    item.update({'subject[2]': ''})
-    item.update({'subject[3]': ''})
+        seriesTitle = seriesID = ''
+        if series_ref:
+            ao_series = requests.get(HOST + series_ref, headers=headers).json()
+            seriesTitle = ao_series.get('title', '')
+            seriesID = ao_series.get('component_id', '')
 
-df = pd.DataFrame(input_data)
-df.to_csv('update.csv', index=False)
+        ao_collection = requests.get(HOST + collection_ref, headers=headers).json()
+        collectionTitle = ao_collection.get('title', '')
+        collectionID = ao_collection.get('id_0', '')
 
-print("All done!")
+        # AO instance and location info
+        location_info = get_location_info(ao_record, headers, config.HOST)
+        full_location = " ".join(filter(None, [seriesID, subseriesID, location_info]))
+        part_of = f"{collectionTitle} ({collectionID}) {full_location}"
+        item.update({'part_of': clean_part_of(part_of)})
+
+        # Finding agents at collection level to use as creator
+        creator_found = False
+        collectionAgents = ao_collection.get('linked_agents', [])
+        for agent in collectionAgents:
+            if agent['role'] in ['creator', 'source']:
+                creator_ref = agent['ref']
+                creator_record = requests.get(HOST + creator_ref, headers=headers).json()
+                creator_name = creator_record.get('title', '')
+                item.update({'creator': creator_name})
+                creator_found = True
+                break
+
+        if not creator_found:
+            print(f"Collection record,{collectionTitle}, has no linked creator agent records!")
+
+        # Check for rights statement at collection level
+        if check_nested_key_value(ao_collection, "type", "userestrict"):
+            rights = []
+            for note in ao_collection.get("notes", []):
+                if note.get("type") == "userestrict":
+                    for subnote in note.get("subnotes", []):
+                        rights.append(subnote['content'])
+            item.update({'rights': ' '.join(rights)})
+        else:
+            print(f"{collectionTitle} does not have a rights statement (key-value pair 'type': 'userestrict')")
+
+        # Match file extension to IA media type
+        media_type_resolver = MediaTypeResolver()
+        media_type = media_type_resolver.get_media_type(item)
+        if media_type:
+            item.update({'mediatype': media_type})
+
+        # Pulling AO notes for IA description fields
+        note_list = get_notes(ao_record)
+        for count, note in enumerate(note_list, 1):
+            description = note.get('content')
+            if isinstance(description, str):
+                item.update({f'description[{count}]': description})
+            elif isinstance(description, list):
+                for desc in description:
+                    item.update({f'description[{count}]': desc})
+                    count += 1
+
+        # Setting pre-set values
+        item.update({'sponsor': IA_sponsor, 'collection': IA_collection})
+
+        # Setting IA subject values
+        item.update({'subject[1]': collectionID, 'subject[2]': '', 'subject[3]': ''})
+        print(item)
+
+    df = pd.DataFrame(input_data)
+    df.to_csv('update.csv', index=False)
+
+    print("All done!")
