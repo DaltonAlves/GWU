@@ -12,9 +12,6 @@ from tools.csvtool import check_nested_key_value, read_csv_to_dict
 import os
 
 #to do:
-    #regex for part_of
-    #think through csv required fields. How does "identifier" and "file" relate to context of workflows? file is just file or URI? Look a old upload sheets.
-    #need to strip the archival_object row from updated CSV because it'll mess up the upload to IA. Or we could prefer PUI links and push those as part of IA metadata. 
     #cleanup part_of citation. need to regex out repeating values (ex (MSxxxx) MSxxxx Series 1 Series 1)
     #think through mapping of aspace notes (scope/content, extent)
     #is there any value of having mediatype map to a specific pre-defined profile for different material types?
@@ -69,7 +66,15 @@ for item in input_data:
     if ao_record.status_code == 404:
         raise Exception('This archival object couldn\'t be retrieved with the api. Something may be wrong with the URL?: ' + ['archival_object'])
     else:
+
         ao_record = ao_record.json()
+
+
+    #setting ref_id as identifier-bib
+    ref_id = ao_record.get('ref_id', 'N/A')
+    print(ref_id)
+    ref_id_with_label = f"{ref_id} (ref_id)"  # Concatenate '(ref_id)' to the ref_id value. Identifier-bib is not controlled, we want to clarify what this string means.
+    item.update({'identifier-bib': ref_id_with_label})
 
     #setting title
     ao_title = ao_record['title']
